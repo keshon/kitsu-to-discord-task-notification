@@ -80,8 +80,12 @@ func SendMessage(conf config.Config, message kitsu.TaskResponse, webHookURL stri
 	embed.Author.Name = author
 	embed.Title = title
 
-	if conf.Kitsu.SkipProject != true {
-		embed.Url = conf.Kitsu.Hostname + "productions/" + message.ProjectID + "/assets?search=" + message.TaskName
+	if conf.Kitsu.SkipProject != true && message.TaskType != "" {
+		typeURL := "assets"
+		if message.TaskType == "Shot" {
+			typeURL = "shots"
+		}
+		embed.Url = conf.Kitsu.Hostname + "productions/" + message.ProjectID + "/" + typeURL + "?search=" + message.TaskName
 	}
 
 	embed.Description = description

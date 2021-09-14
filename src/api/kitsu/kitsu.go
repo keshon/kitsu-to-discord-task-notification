@@ -240,6 +240,7 @@ type TaskResponse struct {
 	ProjectID        string
 	TaskName         string
 	TaskUpdatedAt    string
+	TaskType         string
 	SubTaskName      string
 	StatusName       string
 	OldStatusName    string
@@ -260,6 +261,8 @@ func MakeTaskResponse(conf config.Config, task Task) TaskResponse {
 	entity := GetEntity(task.EntityID)
 	response.TaskName = entity.Name
 	response.TaskUpdatedAt = entity.UpdatedAt
+	entityType := GetEntityType(entity.EntityTypeID)
+	response.TaskType = entityType.Name
 
 	// Parse project name (production)
 	if conf.Kitsu.SkipProject == false {
