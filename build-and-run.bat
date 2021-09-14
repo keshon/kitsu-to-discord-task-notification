@@ -1,0 +1,1 @@
+go build -o app.exe src/main.go && app.exe
