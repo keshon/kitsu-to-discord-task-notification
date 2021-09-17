@@ -1,11 +1,11 @@
-{{- if .OldStatusName}}
-    {{- if ne .OldStatusName .StatusName}}
-        Обновился статус на **{{.StatusName}}** (было *{{.OldStatusName}}*)
+{{- if .PreviousStatus}}
+    {{- if ne .PreviousStatus .CurrentStatus}}
+        Обновился статус на **{{.CurrentStatus}}** (было *{{.PreviousStatus}}*)
     {{- end}}
 {{- else}}
-    Новый статус **{{.StatusName}}**
+    Новый статус **{{.CurrentStatus}}**
 {{- end}}
-{{- if .CommentMessage}}
+{{- if .CommentContent}}
     Новый комментарий от **{{.CommentAuthor}}**:
-    ```{{.CommentMessage}}```
+    ```{{.CommentContent}}```
 {{- end}}

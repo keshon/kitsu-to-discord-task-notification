@@ -24,3 +24,4 @@ tests.bat
 *.db
 /release
 /vendor
+/dump

@@ -1,46 +1,18 @@
 # Сonfiguration file
 
-# Everything about notifications for updated statuses in Kitsu. Poll duration dictates how often bot should check Kitsu for updates.
-# Bot can quote comments for updated status if there are any - you can truncate them via `comment_truncate_at`
-# Silent update set to true is useful for the first run. Otherwise Bot would spam chat with a lot of statuses on exisitng Kitsu instance.
-# `Admin chat ID` is a numerical ID of Telegram chats. On first run type `/lookup` command privatly to bot - it will print an array ..
-# .. with `chat_id` field contatining the ID. Put it to `admin_chat_id` - you are now the admin.
-threads = 0 # set 0 to go synchronous way (the slowest), -1 for wait groups, > 1 - semafore threads (unstable)
-pollInterval = 180 # in seconds
-postDelay = 2 # in seconds
-truncateComments = 128 # in characters
-silentUpdate = false # set to true for the first run - it will fill up the database without posting any messages to Discord
-suppressUndefinedRoles = false # dont inform Administrator for messages that were not addressed to existing chat roles
-templatePath = "tpl" # parent folder for stored template's files
-debug = false
-log = false
+threads = 12 # small speedup in main loop
+debug = false # show kitsu json response
+log = true
 
-# Kitsu settings
-# Specify Hostname of your Kitsu instance e.g. "https://kitsu-example.com/".
-# Studio Manager's email and password are required.
 [kitsu]
     hostname = "https://example.com/" # trailing slash is mandatory
-    email = "user@example.com"
+    email = "manager@example.com"
     password = "123"
+    skipComments = false # comments creates some overhead for Kitsu database - use with caution
+    requestInterval = 10 # minutes
 
-    # List fo Kitsu statuses with 'is done' set to yes. Needed to reduce app overhead.
-    isDoneStatusNames = [
-        "done"
-    ]
-
-    # Skip certain information from Kitsu to reduce overhead
-    skipProject = false
-    skipMentions = false
-    skipComments = false
-
-# Discord settings
-# You need to enable webhook integration for a particular chat and get a webhook URL
-# Multiple URLs for different Kitsu statuses can be used via webhookURLsByStatus (otherwise webhookUrl will be used as a fallback)
 [discord]
-    use = true
-    language = "en"
-    webhookURL = "https://discord.com/api/webhooks/123/123"
-    webhookURLsByStatus = [
-        "rework:https://discord.com/api/webhooks/123/123",
-        "to do:https://discord.com/api/webhooks/123/123"
-    ]
+    embedsPerRequests = 10 # ten is maximum
+    RequestsPerMinute = 50 # fifty is maximum
+    ignoreMessagesDaysOld = 1
+    webhookURL = "https://discord.com/api/webhooks/123/123456789"

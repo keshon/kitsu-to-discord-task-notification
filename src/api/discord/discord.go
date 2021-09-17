@@ -10,8 +10,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 	"text/template"
-	"time"
 )
 
 // Discord embed API
@@ -40,24 +41,61 @@ type Payload struct {
 	Embeds    []Embed `json:"embeds,omitempty"`
 }
 
-func SendMessageBunch(conf config.Config, message []kitsu.TaskResponse, webHookURL string) {
+type Template struct {
+	ProjectName    string
+	GroupName      string
+	TaskName       string
+	TaskType       string
+	SubTaskName    string
+	CurrentStatus  string
+	PreviousStatus string
+	CommentContent string
+	CommentAuthor  string
+	EntityType     string
+}
+
+func SendMessageBunch(conf config.Config, data []kitsu.MessagePayload, webHookURL string) {
 	payload := Payload{}
 	payload.Content = ""
 
-	for _, elem := range message {
+	for _, elem := range data {
+		var placeholders Template
+
+		placeholders.ProjectName = elem.Project.Name
+		placeholders.GroupName = elem.EntityType.Name
+		placeholders.TaskName = elem.Entity.Name
+		placeholders.TaskType = elem.TaskType.Name
+		placeholders.CurrentStatus = elem.TaskStatus.ShortName
+		placeholders.PreviousStatus = elem.PreviousStatusName
+		placeholders.CommentContent = elem.LatestComment.Comment.Text
+		placeholders.CommentAuthor = elem.LatestComment.Author.FullName
+		placeholders.EntityType = elem.EntityType.EntityType.Name
+
+		hexColor := strings.ReplaceAll(elem.TaskStatus.Color, "#", "")
+		intColor, err := strconv.ParseInt(hexColor, 16, 64)
+		if err != nil {
+			fmt.Printf("Conversion failed: %s\n", err)
+		}
+
 		// Title template
-		author := parseTaskTemplate(conf.TemplatePath+"/author.tpl", elem)
-		title := parseTaskTemplate(conf.TemplatePath+"/title.tpl", elem)
-		description := parseTaskTemplate(conf.TemplatePath+"/description.tpl", elem)
-		footer := parseTaskTemplate(conf.TemplatePath+"/footer.tpl", elem)
+		author := parseTaskTemplate("tpl/author.tpl", placeholders)
+		title := parseTaskTemplate("tpl/title.tpl", placeholders)
+		description := parseTaskTemplate("tpl/description.tpl", placeholders)
+		footer := parseTaskTemplate("tpl/footer.tpl", placeholders)
 
 		embed := Embed{}
+		embed.Color = int(intColor)
 		embed.Author.Name = truncate.TruncateString(author, 256)
 		embed.Title = truncate.TruncateString(title, 256)
 
-		if conf.Kitsu.SkipProject != true {
-			embed.Url = conf.Kitsu.Hostname + "productions/" + elem.ProjectID + "/assets?search=" + elem.TaskName
+		// Form URL with appropriate filtering
+		url := "assets"
+		args := elem.EntityType.EntityType.Name + "%20" + strings.Replace(elem.Entity.Name, "_", "%20", -1)
+		if elem.EntityType.Name == "Shot" {
+			url = "shots"
+			args = elem.Parent.Name + "%20" + strings.Replace(elem.Entity.Name, "_", "%20", -1)
 		}
+		embed.Url = conf.Kitsu.Hostname + "productions/" + elem.Project.ID + "/" + url + "/task-types/" + elem.Task.TaskTypeID + "?search=" + args
 
 		embed.Description = truncate.TruncateString(description, 4096)
 		embed.Footer.Text = truncate.TruncateString(footer, 2048)
@@ -66,40 +104,9 @@ func SendMessageBunch(conf config.Config, message []kitsu.TaskResponse, webHookU
 	}
 
 	request.Do("", http.MethodPost, webHookURL, payload, nil)
-	time.Sleep(time.Duration(conf.PostDelay) * time.Second)
 }
 
-func SendMessage(conf config.Config, message kitsu.TaskResponse, webHookURL string) {
-	// Title template
-	author := parseTaskTemplate(conf.TemplatePath+"/author.tpl", message)
-	title := parseTaskTemplate(conf.TemplatePath+"/title.tpl", message)
-	description := parseTaskTemplate(conf.TemplatePath+"/description.tpl", message)
-	footer := parseTaskTemplate(conf.TemplatePath+"/footer.tpl", message)
-
-	embed := Embed{}
-	embed.Author.Name = author
-	embed.Title = title
-
-	if conf.Kitsu.SkipProject != true && message.TaskType != "" {
-		typeURL := "assets"
-		if message.TaskType == "Shot" {
-			typeURL = "shots"
-		}
-		embed.Url = conf.Kitsu.Hostname + "productions/" + message.ProjectID + "/" + typeURL + "?search=" + message.TaskName
-	}
-
-	embed.Description = description
-	embed.Footer.Text = footer
-
-	payload := Payload{}
-	payload.Content = ""
-	payload.Embeds = append(payload.Embeds, embed)
-
-	request.Do("", http.MethodPost, webHookURL, payload, nil)
-	time.Sleep(time.Duration(conf.PostDelay) * time.Second)
-}
-
-func parseTaskTemplate(tplFilePath string, data kitsu.TaskResponse) string {
+func parseTaskTemplate(tplFilePath string, data Template) string {
 	tpl, err := ioutil.ReadFile(tplFilePath)
 	if err != nil {
 		fmt.Print(err)

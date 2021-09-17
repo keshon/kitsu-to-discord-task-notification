@@ -4,13 +4,8 @@ package kitsu
 import (
 	"app/src/utils/config"
 	"app/src/utils/request"
-	"app/src/utils/sanitize"
-	"app/src/utils/truncate"
-	"fmt"
 	"net/http"
 	"os"
-	"sort"
-	"time"
 )
 
 type Task struct {
@@ -56,6 +51,10 @@ type Person struct {
 	FullName                  string `json:"full_name,omitempty"`
 }
 
+type Persons struct {
+	Each []Person
+}
+
 type Entity struct {
 	EntitiesOut     []interface{} `json:"entities_out,omitempty"`
 	InstanceCasting []interface{} `json:"instance_casting,omitempty"`
@@ -85,6 +84,14 @@ type Entities struct {
 type EntityType struct {
 	ID   string `json:"id,omitempty"`
 	Name string `json:"name,omitempty"`
+}
+
+type EntityTypes struct {
+	Each []EntityType
+}
+
+type TaskStatuses struct {
+	Each []TaskStatus
 }
 
 type TaskStatus struct {
@@ -146,6 +153,14 @@ type ProjectStatuses struct {
 	Each []ProjectStatus
 }
 
+func GetComments() Comments {
+	path := config.Read().Kitsu.Hostname + "api/data/comments"
+	response := Comments{}
+	request.Do(os.Getenv("KitsuJWTToken"), http.MethodGet, path, nil, &response.Each)
+
+	return response
+}
+
 func GetComment(objectID string) Comments {
 	path := config.Read().Kitsu.Hostname + "api/data/comments?object_id=" + objectID
 	response := Comments{}
@@ -155,7 +170,7 @@ func GetComment(objectID string) Comments {
 }
 
 func GetTasks() Tasks {
-	path := config.Read().Kitsu.Hostname + "api/data/tasks/"
+	path := config.Read().Kitsu.Hostname + "api/data/tasks/?relations=true"
 	response := Tasks{}
 	println(os.Getenv("KitsuJWTToken"))
 	request.Do(os.Getenv("KitsuJWTToken"), http.MethodGet, path, nil, &response.Each)
@@ -179,7 +194,15 @@ func GetPerson(personID string) Person {
 	return response
 }
 
-func GetEntities(EntityID string) Entities {
+func GetPersons() Persons {
+	path := config.Read().Kitsu.Hostname + "api/data/persons/"
+	response := Persons{}
+	request.Do(os.Getenv("KitsuJWTToken"), http.MethodGet, path, nil, &response.Each)
+
+	return response
+}
+
+func GetEntities() Entities {
 	path := config.Read().Kitsu.Hostname + "api/data/entities/"
 	response := Entities{}
 	request.Do(os.Getenv("KitsuJWTToken"), http.MethodGet, path, nil, &response.Each)
@@ -195,10 +218,26 @@ func GetEntity(EntityID string) Entity {
 	return response
 }
 
+func GetEntityTypes() EntityTypes {
+	path := config.Read().Kitsu.Hostname + "api/data/entity-types/"
+	response := EntityTypes{}
+	request.Do(os.Getenv("KitsuJWTToken"), http.MethodGet, path, nil, &response.Each)
+
+	return response
+}
+
 func GetEntityType(entityTypeID string) EntityType {
 	path := config.Read().Kitsu.Hostname + "api/data/entity-types/" + entityTypeID
 	response := EntityType{}
 	request.Do(os.Getenv("KitsuJWTToken"), http.MethodGet, path, nil, &response)
+
+	return response
+}
+
+func GetTaskStatuses() TaskStatuses {
+	path := config.Read().Kitsu.Hostname + "api/data/task-status/"
+	response := TaskStatuses{}
+	request.Do(os.Getenv("KitsuJWTToken"), http.MethodGet, path, nil, &response.Each)
 
 	return response
 }
@@ -219,10 +258,26 @@ func GetTaskType(taskID string) TaskType {
 	return response
 }
 
+func GetTaskTypes() TaskTypes {
+	path := config.Read().Kitsu.Hostname + "api/data/task-types/"
+	response := TaskTypes{}
+	request.Do(os.Getenv("KitsuJWTToken"), http.MethodGet, path, nil, &response.Each)
+
+	return response
+}
+
 func GetProject(projectID string) Project {
 	path := config.Read().Kitsu.Hostname + "api/data/projects/" + projectID
 	response := Project{}
 	request.Do(os.Getenv("KitsuJWTToken"), http.MethodGet, path, nil, &response)
+
+	return response
+}
+
+func GetProjects() Projects {
+	path := config.Read().Kitsu.Hostname + "api/data/projects/"
+	response := Projects{}
+	request.Do(os.Getenv("KitsuJWTToken"), http.MethodGet, path, nil, &response.Each)
 
 	return response
 }
@@ -251,80 +306,36 @@ type TaskResponse struct {
 	CommentUpdatedAt string
 }
 
-func MakeTaskResponse(conf config.Config, task Task) TaskResponse {
-	response := TaskResponse{}
-
-	// Get human readable status
-	response.StatusName = GetTaskStatus(task.TaskStatusID).ShortName
-
-	// Get entity name (Top Task)
-	entity := GetEntity(task.EntityID)
-	response.TaskName = entity.Name
-	response.TaskUpdatedAt = entity.UpdatedAt
-	entityType := GetEntityType(entity.EntityTypeID)
-	response.TaskType = entityType.Name
-
-	// Parse project name (production)
-	if conf.Kitsu.SkipProject == false {
-		project := GetProject(entity.ProjectID)
-
-		if project.Name != "" {
-			response.ProjectName = sanitize.Sanitize(project.Name)
-			response.ProjectID = project.ID
+type MessagePayload struct {
+	PreviousStatusName string // we store task status from DB and consider it 'old/prevous'
+	Project            struct {
+		Project
+	}
+	Entity struct {
+		Entity
+	}
+	EntityType struct {
+		EntityType
+	}
+	Parent struct {
+		Entity
+	}
+	Task struct {
+		Task
+	}
+	TaskType struct {
+		TaskType
+	}
+	TaskStatus struct {
+		TaskStatus
+	}
+	LatestComment struct {
+		Comment struct {
+			Comment
+		}
+		Author struct {
+			Person
 		}
 	}
-
-	// Get subtask name (task type)
-	taskType := GetTaskType(task.TaskTypeID)
-	if taskType.Name != "" {
-		response.SubTaskName = sanitize.Sanitize(taskType.Name)
-	}
-
-	// Get assingee for the Task and his phone data (we store Telegram nicknames there)
-	detailedTask := GetTask(task.ID)
-	if len(detailedTask.Assignees) > 0 && conf.Kitsu.SkipMentions != true {
-		for key, elem := range detailedTask.Assignees {
-			assingnee := GetPerson(elem)
-			if assingnee.FullName != "" {
-				response.AssigneesList += assingnee.FirstName + " " + assingnee.LastName
-				if len(detailedTask.Assignees) > 1 && len(detailedTask.Assignees)-1 == key {
-					response.AssigneesList += ", "
-				}
-			}
-		}
-	}
-
-	// Get comment
-	if conf.Kitsu.SkipComments != true {
-		comments := GetComment(detailedTask.ID)
-		if len(comments.Each) > 0 {
-			// find the most recent comment in array
-			sort.Slice(comments.Each, func(i, j int) bool {
-				layout := "2006-01-02T15:04:05"
-				a, err := time.Parse(layout, comments.Each[i].UpdatedAt)
-				if err != nil {
-					fmt.Println(err)
-				}
-				b, err := time.Parse(layout, comments.Each[j].UpdatedAt)
-				if err != nil {
-					fmt.Println(err)
-				}
-				return a.Unix() > b.Unix()
-			})
-
-			response.CommentID = comments.Each[0].ID
-			response.CommentUpdatedAt = comments.Each[0].UpdatedAt
-
-			if comments.Each[0].Text != "" {
-				commentMessage := truncate.TruncateString(comments.Each[0].Text, 128)
-				if commentMessage != comments.Each[0].Text {
-					commentMessage += "..."
-				}
-				response.CommentMessage = commentMessage
-				response.CommentAuthor = GetPerson(comments.Each[0].PersonID).FullName
-			}
-		}
-	}
-
-	return response
+	Assignees []Person
 }

@@ -1,1 +1,2 @@
-Проект {{.ProjectName}}
+{{.ProjectName}}
+

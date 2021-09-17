@@ -8,48 +8,22 @@ import (
 )
 
 type Config struct {
-	Threads                int
-	PollInterval           int
-	PostDelay              int
-	TruncateComments       int
-	SilentUpdate           bool
-	SuppressUndefinedRoles bool
-	TemplatePath           string
-	Debug                  bool
-	Log                    bool
-	BunchLimit             int
-	CORS                   struct {
-		AllowOrigins string
-		AllowMethods string
-		AllowHeaders string
-	}
+	Threads int
+	Debug   bool
+	Log     bool
+
 	Kitsu struct {
-		Hostname          string
-		Email             string
-		Password          string
-		IsDoneStatusNames []string
-		SkipProject       bool
-		SkipMentions      bool
-		SkipComments      bool
+		Hostname        string
+		Email           string
+		Password        string
+		SkipComments    bool
+		RequestInterval int
 	}
 	Discord struct {
-		Use                 bool
-		Token               string
-		WebhookURL          string
-		Language            string
-		WebhookURLsByStatus []string
-	}
-	Telegram struct {
-		Use             bool
-		Token           string
-		StateTimeout    int
-		UseWebhook      bool
-		Hostname        string
-		ListenHostname  string
-		Language        string
-		AdminChatID     string
-		ChatIDsByStatus []string
-		Debug           bool
+		EmbedsPerRequests     int
+		RequestsPerMinute     int
+		IgnoreMessagesDaysOld int
+		WebhookURL            string
 	}
 }
 

@@ -1,1 +1,2 @@
-{{.TaskName}} / {{.SubTaskName}}
+{{.EntityType}} / {{.TaskName}} / {{.TaskType}}
+
