@@ -166,19 +166,37 @@ func MakeKitsuResponse(conf config.Config) []kitsu.MessagePayload {
 						}
 					}
 
-					if len(tasks.Each[i].Assignees) > 0 {
-						response[i].Assignees = make([]kitsu.Person, len(tasks.Each[i].Assignees))
-						for e := 0; e < len(tasks.Each[i].Assignees); e++ {
-							if elem.ID == tasks.Each[i].Assignees[e] {
-								response[i].Assignees[e].FullName = "Test"
-								response[i].Assignees[e].FirstName = elem.FirstName
-								response[i].Assignees[e].LastName = elem.LastName
-								response[i].Assignees[e].Email = elem.Email
+					/*
+						if len(tasks.Each[i].Assignees) > 0 {
+							response[i].Assignees = make([]kitsu.Person, len(tasks.Each[i].Assignees))
+							for e := 0; e < len(tasks.Each[i].Assignees); e++ {
+								if elem.ID == tasks.Each[i].Assignees[e] {
+									response[i].Assignees[e].FullName = "Test"
+									response[i].Assignees[e].FirstName = elem.FirstName
+									response[i].Assignees[e].LastName = elem.LastName
+									response[i].Assignees[e].Email = elem.Email
+								}
 							}
+						}
+					*/
+				}
+			}
+
+			// Store assignee
+			for _, elem := range persons.Each {
+				if len(tasks.Each[i].Assignees) > 0 {
+					response[i].Assignees = make([]kitsu.Person, len(tasks.Each[i].Assignees))
+					for e := 0; e < len(tasks.Each[i].Assignees); e++ {
+						if elem.ID == tasks.Each[i].Assignees[e] {
+							response[i].Assignees[e].FullName = elem.FullName
+							response[i].Assignees[e].FirstName = elem.FirstName
+							response[i].Assignees[e].LastName = elem.LastName
+							response[i].Assignees[e].Email = elem.Email
 						}
 					}
 				}
 			}
+
 		}(i)
 	}
 	wg.Wait()

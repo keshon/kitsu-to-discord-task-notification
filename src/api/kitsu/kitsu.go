@@ -153,6 +153,40 @@ type ProjectStatuses struct {
 	Each []ProjectStatus
 }
 
+type MessagePayload struct {
+	PreviousStatusName string // we store task status from DB and consider it 'old/prevous'
+	Project            struct {
+		Project
+	}
+	Entity struct {
+		Entity
+	}
+	EntityType struct {
+		EntityType
+	}
+	Parent struct {
+		Entity
+	}
+	Task struct {
+		Task
+	}
+	TaskType struct {
+		TaskType
+	}
+	TaskStatus struct {
+		TaskStatus
+	}
+	LatestComment struct {
+		Comment struct {
+			Comment
+		}
+		Author struct {
+			Person
+		}
+	}
+	Assignees []Person
+}
+
 func GetComments() Comments {
 	path := config.Read().Kitsu.Hostname + "api/data/comments"
 	response := Comments{}
@@ -288,54 +322,4 @@ func GetProjectStatus(projectStatusID string) ProjectStatus {
 	request.Do(os.Getenv("KitsuJWTToken"), http.MethodGet, path, nil, &response)
 
 	return response
-}
-
-type TaskResponse struct {
-	ProjectName      string
-	ProjectID        string
-	TaskName         string
-	TaskUpdatedAt    string
-	TaskType         string
-	SubTaskName      string
-	StatusName       string
-	OldStatusName    string
-	AssigneesList    string
-	CommentID        string
-	CommentMessage   string
-	CommentAuthor    string
-	CommentUpdatedAt string
-}
-
-type MessagePayload struct {
-	PreviousStatusName string // we store task status from DB and consider it 'old/prevous'
-	Project            struct {
-		Project
-	}
-	Entity struct {
-		Entity
-	}
-	EntityType struct {
-		EntityType
-	}
-	Parent struct {
-		Entity
-	}
-	Task struct {
-		Task
-	}
-	TaskType struct {
-		TaskType
-	}
-	TaskStatus struct {
-		TaskStatus
-	}
-	LatestComment struct {
-		Comment struct {
-			Comment
-		}
-		Author struct {
-			Person
-		}
-	}
-	Assignees []Person
 }

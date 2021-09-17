@@ -41,9 +41,16 @@ type Payload struct {
 	Embeds    []Embed `json:"embeds,omitempty"`
 }
 
+type Assignee struct {
+	Fullname string
+	Email    string
+	Phone    string
+}
+
 type Template struct {
 	ProjectName    string
 	GroupName      string
+	ParentName     string
 	TaskName       string
 	TaskType       string
 	SubTaskName    string
@@ -52,6 +59,7 @@ type Template struct {
 	CommentContent string
 	CommentAuthor  string
 	EntityType     string
+	Assignees      []Assignee
 }
 
 func SendMessageBunch(conf config.Config, data []kitsu.MessagePayload, webHookURL string) {
@@ -63,6 +71,7 @@ func SendMessageBunch(conf config.Config, data []kitsu.MessagePayload, webHookUR
 
 		placeholders.ProjectName = elem.Project.Name
 		placeholders.GroupName = elem.EntityType.Name
+		placeholders.ParentName = elem.Parent.Name
 		placeholders.TaskName = elem.Entity.Name
 		placeholders.TaskType = elem.TaskType.Name
 		placeholders.CurrentStatus = elem.TaskStatus.ShortName
@@ -70,6 +79,13 @@ func SendMessageBunch(conf config.Config, data []kitsu.MessagePayload, webHookUR
 		placeholders.CommentContent = elem.LatestComment.Comment.Text
 		placeholders.CommentAuthor = elem.LatestComment.Author.FullName
 		placeholders.EntityType = elem.EntityType.EntityType.Name
+
+		placeholders.Assignees = make([]Assignee, len(elem.Assignees))
+		for i := 0; i < len(elem.Assignees); i++ {
+			placeholders.Assignees[i].Fullname = elem.Assignees[i].FullName
+			placeholders.Assignees[i].Email = elem.Assignees[i].Email
+			placeholders.Assignees[i].Phone = elem.Assignees[i].Phone
+		}
 
 		hexColor := strings.ReplaceAll(elem.TaskStatus.Color, "#", "")
 		intColor, err := strconv.ParseInt(hexColor, 16, 64)
