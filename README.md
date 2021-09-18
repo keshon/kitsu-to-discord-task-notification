@@ -1,4 +1,5 @@
-# Kitsu (CGWire) automatic notifications to Discord
+![Kitsu (CGWire) automatic notifications to Discord](https://raw.githubusercontent.com/keshon/assets/main/kitsu-to-discord-header.jpeg)
+
 This app automatically sends task status notifications from Kitsu tracker to Discord using a simple schedule. Discord messages can be customized via simple template engine (check /tpl dir).
 
 ## Quick run
