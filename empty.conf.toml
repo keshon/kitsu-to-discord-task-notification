@@ -1,5 +1,6 @@
 # Сonfiguration file
 
+ignoreMessagesDaysOld = 5 # set to 0 to message everything
 threads = 12 # small speedup in main loop
 debug = false # show kitsu json response
 log = true
@@ -8,11 +9,10 @@ log = true
     hostname = "https://example.com/" # trailing slash is mandatory
     email = "manager@example.com"
     password = "123"
-    skipComments = false # comments creates some overhead for Kitsu database - use with caution
+    skipComments = true # comments create some overhead for Kitsu database - use with caution
     requestInterval = 10 # minutes
 
 [discord]
     embedsPerRequests = 10 # ten is maximum
     RequestsPerMinute = 50 # fifty is maximum
-    ignoreMessagesDaysOld = 1
     webhookURL = "https://discord.com/api/webhooks/123/123456789"

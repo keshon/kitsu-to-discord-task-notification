@@ -70,7 +70,7 @@ func SendMessageBunch(conf config.Config, data []kitsu.MessagePayload, webHookUR
 		var placeholders Template
 
 		placeholders.ProjectName = elem.Project.Name
-		placeholders.GroupName = elem.EntityType.Name
+		placeholders.GroupName = elem.EntityType.Name // not needed
 		placeholders.ParentName = elem.Parent.Name
 		placeholders.TaskName = elem.Entity.Name
 		placeholders.TaskType = elem.TaskType.Name

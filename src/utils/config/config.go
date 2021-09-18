@@ -8,9 +8,10 @@ import (
 )
 
 type Config struct {
-	Threads int
-	Debug   bool
-	Log     bool
+	IgnoreMessagesDaysOld int
+	Threads               int
+	Debug                 bool
+	Log                   bool
 
 	Kitsu struct {
 		Hostname        string
@@ -20,10 +21,9 @@ type Config struct {
 		RequestInterval int
 	}
 	Discord struct {
-		EmbedsPerRequests     int
-		RequestsPerMinute     int
-		IgnoreMessagesDaysOld int
-		WebhookURL            string
+		EmbedsPerRequests int
+		RequestsPerMinute int
+		WebhookURL        string
 	}
 }
 

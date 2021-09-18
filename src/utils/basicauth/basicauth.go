@@ -62,7 +62,8 @@ func AuthForJWTToken(url, email, password string) string {
 	var jwt Response
 	err = json.Unmarshal(respBody, &jwt)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("Error! Check your Kitsu credentials in conf.toml")
+		//log.Fatalln(err)
 	}
 
 	return jwt.Token

@@ -62,12 +62,14 @@ func MakeKitsuResponse(conf config.Config) []kitsu.MessagePayload {
 	}
 
 	var comments kitsu.Comments
-	if conf.Kitsu.SkipComments {
+	if !conf.Kitsu.SkipComments {
 		comments = kitsu.GetComments()
 		if conf.Log {
 			fmt.Println("Got comments: " + strconv.Itoa(len(comments.Each)))
 		}
 	}
+
+	start := time.Now()
 
 	response := make([]kitsu.MessagePayload, len(tasks.Each))
 
@@ -78,6 +80,18 @@ func MakeKitsuResponse(conf config.Config) []kitsu.MessagePayload {
 		wg.BlockAdd()
 		go func(i int) {
 			defer wg.Done()
+
+			// Ignore old messages
+			layout := "2006-01-02T15:04:05"
+			taskDate, err := time.Parse(layout, tasks.Each[i].UpdatedAt)
+			if err != nil {
+				fmt.Println(err)
+			}
+			daysCount := int(start.Sub(taskDate).Hours() / 24)
+
+			if conf.IgnoreMessagesDaysOld != 0 && daysCount > conf.IgnoreMessagesDaysOld {
+				return
+			}
 
 			// Store task
 			response[i].Task.Task = tasks.Each[i]
@@ -165,33 +179,15 @@ func MakeKitsuResponse(conf config.Config) []kitsu.MessagePayload {
 							break
 						}
 					}
-
-					/*
-						if len(tasks.Each[i].Assignees) > 0 {
-							response[i].Assignees = make([]kitsu.Person, len(tasks.Each[i].Assignees))
-							for e := 0; e < len(tasks.Each[i].Assignees); e++ {
-								if elem.ID == tasks.Each[i].Assignees[e] {
-									response[i].Assignees[e].FullName = "Test"
-									response[i].Assignees[e].FirstName = elem.FirstName
-									response[i].Assignees[e].LastName = elem.LastName
-									response[i].Assignees[e].Email = elem.Email
-								}
-							}
-						}
-					*/
 				}
 			}
 
 			// Store assignee
-			for _, elem := range persons.Each {
-				if len(tasks.Each[i].Assignees) > 0 {
-					response[i].Assignees = make([]kitsu.Person, len(tasks.Each[i].Assignees))
-					for e := 0; e < len(tasks.Each[i].Assignees); e++ {
-						if elem.ID == tasks.Each[i].Assignees[e] {
-							response[i].Assignees[e].FullName = elem.FullName
-							response[i].Assignees[e].FirstName = elem.FirstName
-							response[i].Assignees[e].LastName = elem.LastName
-							response[i].Assignees[e].Email = elem.Email
+			if len(tasks.Each[i].Assignees) > 0 {
+				for _, assigneeID := range tasks.Each[i].Assignees {
+					for _, person := range persons.Each {
+						if assigneeID == person.ID {
+							response[i].Assignees = append(response[i].Assignees, person)
 						}
 					}
 				}
@@ -201,7 +197,24 @@ func MakeKitsuResponse(conf config.Config) []kitsu.MessagePayload {
 	}
 	wg.Wait()
 
-	return response
+	if conf.Log {
+		log.Printf("Done primary loop in %s", time.Since(start))
+	}
+	//return response
+
+	// Remove empty elems
+	var out []kitsu.MessagePayload
+	for _, elem := range response {
+		if len(elem.Task.Task.ID) > 0 {
+			out = append(out, elem)
+		}
+	}
+
+	if conf.Log {
+		log.Printf("Done secondary loop in %s", time.Since(start))
+	}
+
+	return out
 }
 
 /*
@@ -248,7 +261,7 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 	}
 
 	rl := rate.New(conf.Discord.RequestsPerMinute, time.Minute) // 50 times per minute
-	begin := time.Now()
+	start := time.Now()
 
 	var payload []kitsu.MessagePayload
 	for i := 0; i < len(data); i++ {
@@ -270,31 +283,19 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 			model.CreateTask(db, data[i].Task.Task.ID, data[i].Task.Task.UpdatedAt, data[i].TaskStatus.TaskStatus.ShortName, data[i].LatestComment.Comment.ID, data[i].LatestComment.Comment.UpdatedAt)
 		}
 
-		// Ignore old messages
-		layout := "2006-01-02T15:04:05"
-		taskDate, err := time.Parse(layout, data[i].Task.Task.UpdatedAt)
-		if err != nil {
-			fmt.Println(err)
-		}
-		daysCount := int(begin.Sub(taskDate).Hours() / 24)
 		/*
-			if daysCount > conf.Discord.IgnoreMessagesDaysOld {
+			// Discord send
+			if daysCount < conf.Discord.IgnoreMessagesDaysOld {
+				payload = append(payload, data[i])
+			} else {
 				continue
-			}
-		*/
-
-		// Discord send
-		if daysCount < conf.Discord.IgnoreMessagesDaysOld {
-			payload = append(payload, data[i])
-		} else {
-			continue
-		}
-
+			}*/
+		payload = append(payload, data[i])
 		if i%conf.Discord.EmbedsPerRequests == 1 || len(data)-i < conf.Discord.EmbedsPerRequests {
 			rl.Wait()
 
 			if conf.Log {
-				fmt.Printf("%d started at %s\n", i, time.Now().Sub(begin))
+				fmt.Printf("%d started at %s\n", i, time.Since(start))
 			}
 			discord.SendMessageBunch(conf, payload, conf.Discord.WebhookURL)
 
@@ -323,10 +324,8 @@ func main() {
 	}
 	db.AutoMigrate(&model.Task{})
 
-	var elapsed time.Duration
 	if conf.Log {
-		elapsed = time.Since(start)
-		log.Printf("Connected to database in %s", elapsed)
+		log.Printf("Connected to database in %s", time.Since(start))
 	}
 
 	// Create Cron
@@ -338,8 +337,7 @@ func main() {
 	token := basicauth.AuthForJWTToken(conf.Kitsu.Hostname+"api/auth/login", conf.Kitsu.Email, conf.Kitsu.Password)
 	os.Setenv("KitsuJWTToken", token)
 	if conf.Log {
-		elapsed = time.Since(start)
-		log.Printf("Connected to Kitsu in %s", elapsed)
+		log.Printf("Connected to Kitsu in %s", time.Since(start))
 	}
 
 	c.AddFunc("@every 1h", func() {
@@ -354,15 +352,13 @@ func main() {
 	kitsuResponse := MakeKitsuResponse(conf)
 	if conf.Log {
 		DumpToFile(kitsuResponse, "kitsu_response")
-		elapsed = time.Since(start)
-		log.Printf("Done MakeKitsuResponse in %s", elapsed)
+		log.Printf("Done MakeKitsuResponse in %s", time.Since(start))
 	}
 
 	// Prepare messages to Discord
 	DiscordQueue(kitsuResponse, conf, db)
 	if conf.Log {
-		elapsed = time.Since(start)
-		log.Printf("Done DiscordQueue in %s", elapsed)
+		log.Printf("Done DiscordQueue in %s", time.Since(start))
 	}
 
 	c.AddFunc("@every "+strconv.Itoa(conf.Kitsu.RequestInterval)+"s", func() {
@@ -370,15 +366,13 @@ func main() {
 		kitsuResponse := MakeKitsuResponse(conf)
 		if conf.Log {
 			DumpToFile(kitsuResponse, "kitsu_response")
-			elapsed = time.Since(start)
-			log.Printf("Done MakeKitsuResponse in %s", elapsed)
+			log.Printf("Done MakeKitsuResponse in %s", time.Since(start))
 		}
 
 		// Prepare messages to Discord
 		DiscordQueue(kitsuResponse, conf, db)
 		if conf.Log {
-			elapsed = time.Since(start)
-			log.Printf("Done DiscordQueue in %s", elapsed)
+			log.Printf("Done DiscordQueue in %s", time.Since(start))
 		}
 	})
 
