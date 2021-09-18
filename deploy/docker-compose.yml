@@ -1,0 +1,37 @@
+version: '3.3'
+services:
+  app:
+    container_name: ${ALIAS}
+    image: ${ALIAS}-image
+    restart: always
+    tty: true
+    volumes:
+      - ./data/conf.toml:/usr/project/conf.toml
+      - ./data/sqlite.db:/usr/project/sqlite.db
+    networks:
+      - proxy
+    ports:
+      - 3043:3001
+    labels:
+      - traefik.http.routers.${ALIAS}.middlewares=${ALIAS}Headers
+      - traefik.http.middlewares.${ALIAS}Headers.headers.customFrameOptionsValue=SAMEORIGIN
+       #tls
+      #- traefik.http.routers.${ALIAS}.rule=Host(`${HOST}`)
+      - traefik.http.routers.${ALIAS}.tls=true
+      - traefik.http.routers.${ALIAS}.tls.certresolver=letsencrypt
+      - traefik.http.middlewares.redirect.redirectscheme.scheme=https
+      #cors
+      
+      - "traefik.http.middlewares.${ALIAS}Headers.headers.accesscontrolallowmethods=GET,OPTIONS,PUT"
+      - "traefik.http.middlewares.${ALIAS}Headers.headers.accesscontrolallowcredentials=true"
+      - "traefik.http.middlewares.${ALIAS}Headers.headers.accesscontrolalloworiginlist=https://${KITSU_HOST}"
+      - "traefik.http.middlewares.${ALIAS}Headers.headers.accesscontrolallowheaders=content-type"
+      - "traefik.http.middlewares.${ALIAS}Headers.headers.accesscontrolmaxage=100"
+      - "traefik.http.middlewares.${ALIAS}Headers.headers.addvaryheader=true"
+    command: >
+        bash -c "cd /usr/project && export TERM=xterm-256color && ./app"
+
+networks:
+  # Change if you're using another network
+  proxy:
+    external: true

@@ -52,5 +52,5 @@ go build -ldflags "-s -w" -o app.exe src/main.go
 To deploy app via Docker:
 1. docker-compose and Traefik is installed
 2. Go to `deploy` dir
-3. Update `.evn` if needed.
+3. Update kitsu hostname in `.evn` file.
 4. `bash run.sh` - exec supplied shell script that will download latest sources, build Docker image and run it via docker-compose.
