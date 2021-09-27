@@ -6,21 +6,19 @@ services:
     restart: always
     tty: true
     volumes:
-      - ./data/conf.toml:/usr/project/conf.toml
-      #- ./data/sqlite.db:/usr/project/sqlite.db
+      - "./data/conf.toml:/usr/project/conf.toml"
+      - "./data/sqlite.db:/usr/project/sqlite.db"
+      - "./data/tpl:/usr/project/tpl"
     networks:
       - proxy
     ports:
-      - 3043:3001
+      - "3043:3001"
     labels:
-      - traefik.http.routers.${ALIAS}.middlewares=${ALIAS}Headers
-      - traefik.http.middlewares.${ALIAS}Headers.headers.customFrameOptionsValue=SAMEORIGIN
-       #tls
-      #- traefik.http.routers.${ALIAS}.rule=Host(`${HOST}`)
-      - traefik.http.routers.${ALIAS}.tls=true
-      - traefik.http.routers.${ALIAS}.tls.certresolver=letsencrypt
-      - traefik.http.middlewares.redirect.redirectscheme.scheme=https
-      #cors
+      - "traefik.http.routers.${ALIAS}.middlewares=${ALIAS}Headers"
+      - "traefik.http.middlewares.${ALIAS}Headers.headers.customFrameOptionsValue=SAMEORIGIN"
+      - "traefik.http.routers.${ALIAS}.tls=true"
+      - "traefik.http.routers.${ALIAS}.tls.certresolver=letsencrypt"
+      - "traefik.http.middlewares.redirect.redirectscheme.scheme=https"
       - "traefik.http.middlewares.${ALIAS}Headers.headers.accesscontrolallowmethods=GET,OPTIONS,PUT"
       - "traefik.http.middlewares.${ALIAS}Headers.headers.accesscontrolallowcredentials=true"
       - "traefik.http.middlewares.${ALIAS}Headers.headers.accesscontrolalloworiginlist=https://${KITSU_HOST}"

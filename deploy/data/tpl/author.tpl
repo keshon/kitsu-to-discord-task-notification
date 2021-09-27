@@ -1,0 +1,1 @@
+{{- range .Assignees}}{{.Fullname}} {{- end}}
