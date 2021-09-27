@@ -1,9 +1,9 @@
 REM @ECHO off
 
 REM Release
-@RD /S /Q .\release
-
 SET ROOTPATH=.\release
+
+@RD /S /Q %ROOTPATH%
 
 MKDIR %ROOTPATH%\
 COPY README.md %ROOTPATH%
@@ -17,9 +17,9 @@ COPY .\tpl\footer.tpl %ROOTPATH%\tpl
 COPY .\tpl\title.tpl %ROOTPATH%\tpl
 
 REM Docker
-@RD /S /Q .\deploy\data
+SET ROOTPATH=.\deploy\data
 
-SET ROOTPATH=.\deploy\data\
+@RD /S /Q %ROOTPATH%
 
 MKDIR %ROOTPATH%\
 COPY empty.conf.toml %ROOTPATH%\conf.toml
