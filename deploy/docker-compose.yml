@@ -7,7 +7,7 @@ services:
     tty: true
     volumes:
       - ./data/conf.toml:/usr/project/conf.toml
-      - ./data/sqlite.db:/usr/project/sqlite.db
+      #- ./data/sqlite.db:/usr/project/sqlite.db
     networks:
       - proxy
     ports:
@@ -21,7 +21,6 @@ services:
       - traefik.http.routers.${ALIAS}.tls.certresolver=letsencrypt
       - traefik.http.middlewares.redirect.redirectscheme.scheme=https
       #cors
-      
       - "traefik.http.middlewares.${ALIAS}Headers.headers.accesscontrolallowmethods=GET,OPTIONS,PUT"
       - "traefik.http.middlewares.${ALIAS}Headers.headers.accesscontrolallowcredentials=true"
       - "traefik.http.middlewares.${ALIAS}Headers.headers.accesscontrolalloworiginlist=https://${KITSU_HOST}"

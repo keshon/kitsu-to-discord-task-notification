@@ -62,7 +62,7 @@ func MakeKitsuResponse(conf config.Config) []kitsu.MessagePayload {
 	}
 
 	var comments kitsu.Comments
-	if !conf.Kitsu.SkipComments {
+	if conf.Kitsu.SkipComments == false {
 		comments = kitsu.GetComments()
 		if conf.Log {
 			fmt.Println("Got comments: " + strconv.Itoa(len(comments.Each)))
