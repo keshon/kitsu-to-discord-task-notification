@@ -144,7 +144,7 @@ func MakeKitsuResponse(conf config.Config) []kitsu.MessagePayload {
 			}
 
 			// Store comments
-			if !conf.Kitsu.SkipComments {
+			if conf.Kitsu.SkipComments == false {
 				var taskComments kitsu.Comments
 				for _, elem := range comments.Each {
 					if elem.ObjectID == tasks.Each[i].ID {
