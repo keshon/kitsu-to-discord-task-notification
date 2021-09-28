@@ -18,10 +18,11 @@
 .vscode
 
 # App
-conf.toml
+/conf.toml
 tests.bat
 /tools
-*.db
+/*.db
 /release
+/release/*.db
 /vendor
 /dump
