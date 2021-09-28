@@ -283,23 +283,18 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 			model.CreateTask(db, data[i].Task.Task.ID, data[i].Task.Task.UpdatedAt, data[i].TaskStatus.TaskStatus.ShortName, data[i].LatestComment.Comment.ID, data[i].LatestComment.Comment.UpdatedAt)
 		}
 
-		/*
-			// Discord send
-			if daysCount < conf.Discord.IgnoreMessagesDaysOld {
-				payload = append(payload, data[i])
-			} else {
-				continue
-			}*/
-		payload = append(payload, data[i])
-		if i%conf.Discord.EmbedsPerRequests == 1 || len(data)-i < conf.Discord.EmbedsPerRequests {
-			rl.Wait()
+		if conf.SilentUpdateDB != true {
+			payload = append(payload, data[i])
+			if i%conf.Discord.EmbedsPerRequests == 1 || len(data)-i < conf.Discord.EmbedsPerRequests {
+				rl.Wait()
 
-			if conf.Log {
-				fmt.Printf("%d started at %s\n", i, time.Since(start))
+				if conf.Log {
+					fmt.Printf("%d started at %s\n", i, time.Since(start))
+				}
+				discord.SendMessageBunch(conf, payload, conf.Discord.WebhookURL)
+
+				payload = nil
 			}
-			discord.SendMessageBunch(conf, payload, conf.Discord.WebhookURL)
-
-			payload = nil
 		}
 	}
 }

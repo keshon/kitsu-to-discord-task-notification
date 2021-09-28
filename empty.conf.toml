@@ -1,6 +1,7 @@
 # Сonfiguration file
 
 ignoreMessagesDaysOld = 5 # set to 0 to message everything
+silentUpdateDB = false # update local database but dont post anything
 threads = 12 # small speedup in main loop
 debug = false # show kitsu json response
 log = true

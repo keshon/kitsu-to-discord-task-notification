@@ -10,6 +10,7 @@ Download the latest version (only Windows for now), fill in conf.toml and run it
 | Variables | Description |
 | - | - |
 | ignoreMessagesDaysOld | Don't parse tasks from Kitsu older that this value (days). |
+| silentUpdateDB | Update local database but dont post anything. Useful for the first run. |
 | threads | Increase value to speed up proccesing parsed data - little to no benefit for now |
 | debug | Print Kitsu response data to shell |
 | log | Print additional information to shell |

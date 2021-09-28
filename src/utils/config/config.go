@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	IgnoreMessagesDaysOld int
+	SilentUpdateDB        bool
 	Threads               int
 	Debug                 bool
 	Log                   bool
