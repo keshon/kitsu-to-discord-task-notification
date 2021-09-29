@@ -27,10 +27,10 @@ type EmbedFooter struct {
 }
 
 type Embed struct {
-	Color       int         `json:"color,omitempty"`
-	Title       string      `json:"title"` // 256 characters
-	Url         string      `json:"url,omitempty"`
 	Description string      `json:"description"` // 4096 characters
+	Title       string      `json:"title"`       // 256 characters
+	Color       int         `json:"color,omitempty"`
+	Url         string      `json:"url"`
 	Author      EmbedAuthor `json:"author,omitempty"`
 	Footer      EmbedFooter `json:"footer,omitempty"`
 }
@@ -100,26 +100,40 @@ func SendMessageBunch(conf config.Config, data []kitsu.MessagePayload, webHookUR
 		footer := parseTaskTemplate("tpl/footer.tpl", placeholders)
 
 		embed := Embed{}
+		embed.Title = truncate.TruncateString(title, 256)
+		embed.Description = truncate.TruncateString(description, 4096)
 		embed.Color = int(intColor)
 		embed.Author.Name = truncate.TruncateString(author, 256)
-		embed.Title = truncate.TruncateString(title, 256)
 
-		// Form URL with appropriate filtering
-		url := "assets"
-		args := elem.EntityType.EntityType.Name + "%20" + strings.Replace(elem.Entity.Name, "_", "%20", -1)
-		if elem.EntityType.Name == "Shot" {
-			url = "shots"
-			args = elem.Parent.Name + "%20" + strings.Replace(elem.Entity.Name, "_", "%20", -1)
-		}
-		embed.Url = conf.Kitsu.Hostname + "productions/" + elem.Project.ID + "/" + url + "/task-types/" + elem.Task.TaskTypeID + "?search=" + args
+		// Kitsu complex (and extremely long) url paths don't fit to Discord limits
+		// Kitsu has different url schemes for short production and tv shows
+		/*
+			// Form URL with appropriate filtering
 
-		embed.Description = truncate.TruncateString(description, 4096)
+				url := "assets"
+				args := elem.EntityType.EntityType.Name + "%20" + strings.Replace(elem.Entity.Name, "_", "%20", -1)
+				if elem.EntityType.Name == "Shot" {
+					url = "shots"
+					args = elem.Parent.Name + "%20" + strings.Replace(elem.Entity.Name, "_", "%20", -1)
+				}
+				embed.Url = truncate.TruncateString(conf.Kitsu.Hostname+"productions/"+elem.Project.ID+"/"+url+"/task-types/"+elem.Task.TaskTypeID+"?search="+args, 150)
+		*/
+
+		// Not working for multiple embeds (wtf?)
+		//path := truncate.TruncateString(conf.Kitsu.Hostname+"productions/"+elem.Project.ID+"/news-feed", 128)
+		//embed.Url = path
+
 		embed.Footer.Text = truncate.TruncateString(footer, 2048)
 
 		payload.Embeds = append(payload.Embeds, embed)
 	}
+	resp := request.Do("", http.MethodPost, webHookURL, payload, nil)
 
-	request.Do("", http.MethodPost, webHookURL, payload, nil)
+	if conf.Log {
+		if len(resp) > 0 {
+			log.Printf("Discord error response: " + resp)
+		}
+	}
 }
 
 func parseTaskTemplate(tplFilePath string, data Template) string {

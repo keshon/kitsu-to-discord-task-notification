@@ -15,13 +15,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/beefsack/go-rate"
+
+	"github.com/pieterclaerhout/go-waitgroup"
 	"github.com/robfig/cron/v3"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-
-	"github.com/beefsack/go-rate"
-	"github.com/pieterclaerhout/go-waitgroup"
 )
 
 func MakeKitsuResponse(conf config.Config) []kitsu.MessagePayload {
@@ -224,19 +224,20 @@ func DumpToFile(data []kitsu.MessagePayload, filename string) {
 
 }
 
-func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) {
+func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) []kitsu.MessagePayload {
 	if len(data) == 0 {
 		if conf.Log {
 			fmt.Printf("Nothing to do\n")
 		}
-		return
+		return []kitsu.MessagePayload{}
 	}
 
 	rl := rate.New(conf.Discord.RequestsPerMinute, time.Minute) // 50 times per minute
 
 	var payload []kitsu.MessagePayload
-	var total int
+	var out []kitsu.MessagePayload
 	for i := 0; i < len(data); i++ {
+
 		dbResult := model.FindTask(db, data[i].Task.ID)
 
 		// DB verify
@@ -255,32 +256,29 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 			model.CreateTask(db, data[i].Task.Task.ID, data[i].Task.Task.UpdatedAt, data[i].TaskStatus.TaskStatus.ShortName, data[i].LatestComment.Comment.ID, data[i].LatestComment.Comment.UpdatedAt)
 		}
 
-		total++
-
-		payload = append(payload, data[i])
-		if i%conf.Discord.EmbedsPerRequests == 1 || len(data)-i < conf.Discord.EmbedsPerRequests {
-			rl.Wait()
-
-			if conf.SilentUpdateDB == true {
-				if conf.Log {
-					log.Printf("Ignoring message\n")
-				}
-
-			} else {
-				if conf.Log {
-					log.Printf("Sending message\n")
-				}
-				discord.SendMessageBunch(conf, payload, conf.Discord.WebhookURL)
+		if conf.SilentUpdateDB == true {
+			if conf.Log {
+				log.Printf("Ignoring message\n")
 			}
-
-			payload = nil
+			continue
 		}
 
+		payload = append(payload, data[i])
+		out = append(out, payload...)
+
+		if len(payload) >= conf.Discord.EmbedsPerRequests || i == len(data)-1 {
+			if conf.Log {
+				log.Printf("Sending bunch of messages: " + strconv.Itoa(len(payload)))
+			}
+			discord.SendMessageBunch(conf, payload, conf.Discord.WebhookURL)
+
+			payload = nil
+
+			rl.Wait()
+		}
 	}
 
-	if conf.Log {
-		log.Printf("Total new/changed: " + strconv.Itoa(total) + "\n")
-	}
+	return out
 }
 
 func main() {
@@ -335,8 +333,9 @@ func main() {
 	}
 
 	// Prepare messages to Discord
-	DiscordQueue(kitsuResponse, conf, db)
+	discordPayload := DiscordQueue(kitsuResponse, conf, db)
 	if conf.Log {
+		DumpToFile(discordPayload, "discord_payload")
 		log.Printf("Done DiscordQueue in %s", time.Since(start))
 	}
 
