@@ -303,6 +303,13 @@ func main() {
 
 	if conf.Log {
 		log.Printf("Connected to database in %s", time.Since(start))
+
+		if _, err := os.Stat("./dump"); os.IsNotExist(err) {
+			err := os.Mkdir("./dump", os.ModeDir)
+			if err != nil {
+				panic("failed to create dir")
+			}
+		}
 	}
 
 	// Create Cron

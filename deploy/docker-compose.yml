@@ -9,6 +9,7 @@ services:
       - "./data/conf.toml:/usr/project/conf.toml"
       - "./data/sqlite.db:/usr/project/sqlite.db"
       - "./data/tpl:/usr/project/tpl"
+      - "./data/dump:/usr/project/dump"
     networks:
       - proxy
     ports:
