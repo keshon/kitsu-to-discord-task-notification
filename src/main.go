@@ -257,21 +257,25 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 
 		total++
 
-		if conf.SilentUpdateDB == false {
-			payload = append(payload, data[i])
-			if i%conf.Discord.EmbedsPerRequests == 1 || len(data)-i < conf.Discord.EmbedsPerRequests {
-				rl.Wait()
+		payload = append(payload, data[i])
+		if i%conf.Discord.EmbedsPerRequests == 1 || len(data)-i < conf.Discord.EmbedsPerRequests {
+			rl.Wait()
 
+			if conf.SilentUpdateDB == true {
+				if conf.Log {
+					log.Printf("Ignoring message\n")
+				}
+
+			} else {
 				if conf.Log {
 					log.Printf("Sending message\n")
 				}
 				discord.SendMessageBunch(conf, payload, conf.Discord.WebhookURL)
-
-				payload = nil
 			}
-		} else {
-			rl.Wait()
+
+			payload = nil
 		}
+
 	}
 
 	if conf.Log {
