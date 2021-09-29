@@ -266,6 +266,8 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 
 				payload = nil
 			}
+		} else {
+			rl.Wait()
 		}
 	}
 
