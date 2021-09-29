@@ -262,6 +262,9 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 			if i%conf.Discord.EmbedsPerRequests == 1 || len(data)-i < conf.Discord.EmbedsPerRequests {
 				rl.Wait()
 
+				if conf.Log {
+					log.Printf("Sending message\n")
+				}
 				discord.SendMessageBunch(conf, payload, conf.Discord.WebhookURL)
 
 				payload = nil
