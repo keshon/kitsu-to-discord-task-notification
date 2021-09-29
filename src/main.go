@@ -217,34 +217,6 @@ func MakeKitsuResponse(conf config.Config) []kitsu.MessagePayload {
 	return out
 }
 
-/*
-func VerifyDB(data []kitsu.MessagePayload, db *gorm.DB) []kitsu.MessagePayload {
-
-	var response []kitsu.MessagePayload
-
-	for _, elem := range data {
-		dbResult := model.FindTask(db, elem.Task.ID)
-
-		elem.PreviousStatusName = dbResult.TaskStatus
-
-		if len(dbResult.TaskID) > 0 {
-			// check if status is different or last updated date don't match
-			if dbResult.TaskStatus != elem.TaskStatus.TaskStatus.ShortName || dbResult.TaskUpdatedAt != elem.Task.Task.UpdatedAt {
-				// update
-				model.UpdateTask(db, elem.Task.Task.ID, elem.Task.Task.UpdatedAt, elem.TaskStatus.TaskStatus.ShortName, elem.LatestComment.Comment.ID, elem.LatestComment.Comment.UpdatedAt)
-				response = append(response, elem)
-			}
-		} else {
-			// create
-			model.CreateTask(db, elem.Task.Task.ID, elem.Task.Task.UpdatedAt, elem.TaskStatus.TaskStatus.ShortName, elem.LatestComment.Comment.ID, elem.LatestComment.Comment.UpdatedAt)
-			response = append(response, elem)
-		}
-	}
-
-	return response
-}
-*/
-
 func DumpToFile(data []kitsu.MessagePayload, filename string) {
 
 	file, _ := json.MarshalIndent(data, "", "    ")
@@ -261,9 +233,9 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 	}
 
 	rl := rate.New(conf.Discord.RequestsPerMinute, time.Minute) // 50 times per minute
-	start := time.Now()
 
 	var payload []kitsu.MessagePayload
+	var total int
 	for i := 0; i < len(data); i++ {
 		dbResult := model.FindTask(db, data[i].Task.ID)
 
@@ -283,19 +255,22 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 			model.CreateTask(db, data[i].Task.Task.ID, data[i].Task.Task.UpdatedAt, data[i].TaskStatus.TaskStatus.ShortName, data[i].LatestComment.Comment.ID, data[i].LatestComment.Comment.UpdatedAt)
 		}
 
-		if conf.SilentUpdateDB == false {
+		total++
+
+		if conf.SilentUpdateDB != true {
 			payload = append(payload, data[i])
 			if i%conf.Discord.EmbedsPerRequests == 1 || len(data)-i < conf.Discord.EmbedsPerRequests {
 				rl.Wait()
 
-				if conf.Log {
-					fmt.Printf("%d started at %s\n", i, time.Since(start))
-				}
 				discord.SendMessageBunch(conf, payload, conf.Discord.WebhookURL)
 
 				payload = nil
 			}
 		}
+	}
+
+	if conf.Log {
+		log.Printf("Total new/changed: " + strconv.Itoa(total) + "\n")
 	}
 }
 
@@ -356,7 +331,7 @@ func main() {
 		log.Printf("Done DiscordQueue in %s", time.Since(start))
 	}
 
-	c.AddFunc("@every "+strconv.Itoa(conf.Kitsu.RequestInterval)+"s", func() {
+	c.AddFunc("@every "+strconv.Itoa(conf.Kitsu.RequestInterval)+"m", func() {
 		// Request data from Kitsu
 		kitsuResponse := MakeKitsuResponse(conf)
 		if conf.Log {

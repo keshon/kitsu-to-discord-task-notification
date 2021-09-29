@@ -1,8 +1,11 @@
 FROM golang:1.16-alpine AS mybuildstage
 
+RUN apk add build-base
+RUN apk add sqlite
+
 ADD project-src /usr/project
 
-RUN echo -n >sqlite.db
+RUN sqlite3 sqlite.db "VACUUM;"
 
 WORKDIR /usr/project
 
