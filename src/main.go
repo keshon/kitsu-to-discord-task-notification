@@ -232,10 +232,8 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 		return []kitsu.MessagePayload{}
 	}
 
-	rl := rate.New(conf.Discord.RequestsPerMinute, time.Minute) // 50 times per minute
-
-	var payload []kitsu.MessagePayload
-	var out []kitsu.MessagePayload
+	// Filter
+	var filtered []kitsu.MessagePayload
 	for i := 0; i < len(data); i++ {
 
 		dbResult := model.FindTask(db, data[i].Task.ID)
@@ -248,6 +246,7 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 			if dbResult.TaskStatus != data[i].TaskStatus.TaskStatus.ShortName || dbResult.TaskUpdatedAt != data[i].Task.Task.UpdatedAt {
 				// update
 				model.UpdateTask(db, data[i].Task.Task.ID, data[i].Task.Task.UpdatedAt, data[i].TaskStatus.TaskStatus.ShortName, data[i].LatestComment.Comment.ID, data[i].LatestComment.Comment.UpdatedAt)
+
 			} else {
 				continue
 			}
@@ -256,17 +255,32 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 			model.CreateTask(db, data[i].Task.Task.ID, data[i].Task.Task.UpdatedAt, data[i].TaskStatus.TaskStatus.ShortName, data[i].LatestComment.Comment.ID, data[i].LatestComment.Comment.UpdatedAt)
 		}
 
-		if conf.SilentUpdateDB == true {
+		if conf.SilentUpdateDB {
 			if conf.Log {
 				log.Printf("Ignoring message\n")
 			}
 			continue
 		}
+		filtered = append(filtered, data[i])
+	}
 
-		payload = append(payload, data[i])
-		out = append(out, payload...)
+	// Send
+	rl := rate.New(conf.Discord.RequestsPerMinute, time.Minute) // 50 times per minute
+	var payload []kitsu.MessagePayload
+	for i := 0; i < len(filtered); i++ {
 
-		if len(payload) >= conf.Discord.EmbedsPerRequests || i == len(data)-1 {
+		payload = append(payload, filtered[i])
+
+		/*
+			if conf.Log {
+				log.Printf(strconv.Itoa(len(payload)))
+				log.Printf(strconv.Itoa(len(filtered)))
+				log.Printf(strconv.Itoa(conf.Discord.EmbedsPerRequests))
+				log.Printf("i " + strconv.Itoa(i))
+			}
+		*/
+
+		if (i+1)%conf.Discord.EmbedsPerRequests == 0 || (i+1)%len(filtered) == 0 {
 			if conf.Log {
 				log.Printf("Sending bunch of messages: " + strconv.Itoa(len(payload)))
 			}
@@ -278,7 +292,7 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 		}
 	}
 
-	return out
+	return filtered
 }
 
 func main() {
