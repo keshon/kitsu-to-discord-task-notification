@@ -257,7 +257,7 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 
 		total++
 
-		if conf.SilentUpdateDB != true {
+		if conf.SilentUpdateDB == false {
 			payload = append(payload, data[i])
 			if i%conf.Discord.EmbedsPerRequests == 1 || len(data)-i < conf.Discord.EmbedsPerRequests {
 				rl.Wait()
