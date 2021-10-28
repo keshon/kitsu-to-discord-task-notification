@@ -13,6 +13,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/beefsack/go-rate"
@@ -224,12 +225,12 @@ func DumpToFile(data []kitsu.MessagePayload, filename string) {
 
 }
 
-func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) []kitsu.MessagePayload {
+func FilterTasks(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) {
 	if len(data) == 0 {
 		if conf.Log {
 			fmt.Printf("Nothing to do\n")
 		}
-		return []kitsu.MessagePayload{}
+		//return []kitsu.MessagePayload{}
 	}
 
 	// Filter
@@ -264,12 +265,61 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 		filtered = append(filtered, data[i])
 	}
 
+	// Split tasks by project (production) name found in conf.toml (fallback to filtered otherwise)
+	type TasksByProject struct {
+		ProjectName  string
+		TasksPayload []kitsu.MessagePayload
+	}
+	tasksByProject := make([]TasksByProject, len(conf.Discord.Productions))
+	for i := 0; i < len(tasksByProject); i++ {
+
+		// Downward loop (https://stackoverflow.com/questions/29005825/how-to-remove-element-of-struct-array-in-loop-in-golang)
+		for f := len(filtered) - 1; f >= 0; f-- {
+			if strings.Contains(strings.ToLower(filtered[f].Project.Name), strings.ToLower(conf.Discord.Productions[i].Production)) {
+				tasksByProject[i].ProjectName = filtered[f].Project.Name
+				tasksByProject[i].TasksPayload = append(tasksByProject[i].TasksPayload, filtered[f])
+				filtered = append(filtered[:f], filtered[f+1:]...)
+			}
+		}
+
+	}
+
+	/*
+		prettyResp, _ := prettyjson.Marshal(tasksByProject)
+		fmt.Println("tasksByProject : ", string(prettyResp))
+		println("------------")
+		prettyResp, _ = prettyjson.Marshal(filtered)
+		fmt.Println("filtered : ", string(prettyResp))
+	*/
+
+	// Send to Discord per production URL (see Advanced settings)
+	if len(tasksByProject) > 0 {
+		for i := 0; i < len(tasksByProject); i++ {
+			if len(tasksByProject[i].TasksPayload) > 0 {
+				resp := DiscordQueueSend(tasksByProject[i].TasksPayload, conf, conf.Discord.Productions[i].WebhookURL)
+				if conf.Log {
+					DumpToFile(resp, "discord_payload_taskByProject")
+				}
+			}
+		}
+	}
+
+	// Send to Discord main webhook which acts as a fallback if no project match with conf.toml Advanced settings
+	if len(filtered) > 0 {
+		resp := DiscordQueueSend(filtered, conf, conf.Discord.WebhookURL)
+		if conf.Log {
+			DumpToFile(resp, "discord_payload_filtered")
+		}
+	}
+}
+
+func DiscordQueueSend(data []kitsu.MessagePayload, conf config.Config, webhookURL string) []kitsu.MessagePayload {
 	// Send
 	rl := rate.New(conf.Discord.RequestsPerMinute, time.Minute) // 50 times per minute
 	var payload []kitsu.MessagePayload
-	for i := 0; i < len(filtered); i++ {
+	for i := 0; i < len(data); i++ {
 
-		payload = append(payload, filtered[i])
+		payload = append(payload, data[i])
 
 		/*
 			if conf.Log {
@@ -280,19 +330,19 @@ func DiscordQueue(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) 
 			}
 		*/
 
-		if (i+1)%conf.Discord.EmbedsPerRequests == 0 || (i+1)%len(filtered) == 0 {
+		if (i+1)%conf.Discord.EmbedsPerRequests == 0 || (i+1)%len(data) == 0 {
 			if conf.Log {
 				log.Printf("Sending bunch of messages: " + strconv.Itoa(len(payload)))
 			}
-			discord.SendMessageBunch(conf, payload, conf.Discord.WebhookURL)
 
+			discord.SendMessageBunch(conf, payload, webhookURL)
 			payload = nil
 
 			rl.Wait()
 		}
 	}
 
-	return filtered
+	return data
 }
 
 func main() {
@@ -354,10 +404,9 @@ func main() {
 	}
 
 	// Prepare messages to Discord
-	discordPayload := DiscordQueue(kitsuResponse, conf, db)
+	FilterTasks(kitsuResponse, conf, db)
 	if conf.Log {
-		DumpToFile(discordPayload, "discord_payload")
-		log.Printf("Done DiscordQueue in %s", time.Since(start))
+		log.Printf("Done FilterTasks in %s", time.Since(start))
 	}
 
 	c.AddFunc("@every "+strconv.Itoa(conf.Kitsu.RequestInterval)+"m", func() {
@@ -368,10 +417,10 @@ func main() {
 			log.Printf("Done MakeKitsuResponse in %s", time.Since(start))
 		}
 
-		// Prepare messages to Discord
-		DiscordQueue(kitsuResponse, conf, db)
+		// Filter tasks
+		FilterTasks(kitsuResponse, conf, db)
 		if conf.Log {
-			log.Printf("Done DiscordQueue in %s", time.Since(start))
+			log.Printf("Done FilterTasks in %s", time.Since(start))
 		}
 	})
 

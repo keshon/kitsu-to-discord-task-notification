@@ -1,5 +1,6 @@
 # Сonfiguration file
 
+tplPreset = "eng" # name of a subfolder (inside /tpl) that contains template files for styling Discord message
 ignoreMessagesDaysOld = 5 # set to 0 to message everything
 silentUpdateDB = false # update local database but dont post anything
 threads = 12 # small speedup in main loop
@@ -17,3 +18,17 @@ log = true
     embedsPerRequests = 10 # ten is maximum
     RequestsPerMinute = 50 # fifty is maximum
     webhookURL = "https://discord.com/api/webhooks/123/123456789"
+
+
+# Advanced settings (don't touch if you don't fully understand how to use it)
+# Send notifications for specific production to separate Discord channels
+# Uncomment and edit settings to your needs
+# Production name's case is ignored: 'BATMAN' and 'Batman' is the same thing.
+
+#[[discord.productions]]
+#    production = "Batman" # Production(s) that contains 'Batman'
+#    webhookURL = "https://discord.com/api/webhooks/123/123456789"
+
+#[[discord.productions]]
+#    production = "Show"  # Production(s) that contains 'Show'
+#    webhookURL = "https://discord.com/api/webhooks/123/123456789"

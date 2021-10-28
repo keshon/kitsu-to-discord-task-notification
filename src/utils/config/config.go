@@ -7,7 +7,13 @@ import (
 	"github.com/naoina/toml"
 )
 
+type Productions struct {
+	Production string
+	WebhookURL string
+}
+
 type Config struct {
+	TplPreset             string
 	IgnoreMessagesDaysOld int
 	SilentUpdateDB        bool
 	Threads               int
@@ -25,6 +31,7 @@ type Config struct {
 		EmbedsPerRequests int
 		RequestsPerMinute int
 		WebhookURL        string
+		Productions       []Productions `toml:"productions,omitempty"`
 	}
 }
 

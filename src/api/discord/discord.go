@@ -94,10 +94,11 @@ func SendMessageBunch(conf config.Config, data []kitsu.MessagePayload, webHookUR
 		}
 
 		// Title template
-		author := parseTaskTemplate("tpl/author.tpl", placeholders)
-		title := parseTaskTemplate("tpl/title.tpl", placeholders)
-		description := parseTaskTemplate("tpl/description.tpl", placeholders)
-		footer := parseTaskTemplate("tpl/footer.tpl", placeholders)
+		tplPreset := conf.TplPreset
+		author := parseTaskTemplate("tpl/"+tplPreset+"/author.tpl", placeholders)
+		title := parseTaskTemplate("tpl/"+tplPreset+"/title.tpl", placeholders)
+		description := parseTaskTemplate("tpl/"+tplPreset+"/description.tpl", placeholders)
+		footer := parseTaskTemplate("tpl/"+tplPreset+"/footer.tpl", placeholders)
 
 		embed := Embed{}
 		embed.Title = truncate.TruncateString(title, 256)
