@@ -1,6 +1,9 @@
-![Kitsu (CGWire) automatic notifications to Discord](https://raw.githubusercontent.com/keshon/assets/main/kitsu-to-discord-header.jpeg)
+![Kitsu (CGWire) automatic notifications to Discord](https://raw.githubusercontent.com/keshon/assets/main/kitsu-to-discord-task-notification/header.jpeg)
 
 This app automatically sends task status notifications from Kitsu tracker to Discord using a simple schedule. Discord messages can be customized via simple template engine (check /tpl dir).
+
+<kbd>![# Demo](https://raw.githubusercontent.com/keshon/assets/main/kitsu-to-discord-task-notification/demo.gif)</kbd>
+
 
 ## Quick run
 Download the latest version (only Windows for now), fill in conf.toml and run it.
@@ -9,6 +12,7 @@ Download the latest version (only Windows for now), fill in conf.toml and run it
 #### Basic
 | Variables | Description |
 | - | - |
+|tplPreset| Name of a subfolder (inside `/tpl`) that contains template files for styling Discord message. Useful for different customizations.
 | ignoreMessagesDaysOld | Don't parse tasks from Kitsu older that this value (days). |
 | silentUpdateDB | Update local database but dont post anything. Useful for the first run. |
 | threads | Increase value to speed up proccesing parsed data - little to no benefit for now |
@@ -32,6 +36,7 @@ Download the latest version (only Windows for now), fill in conf.toml and run it
 ### Templating (tpl dir)
 The Discord message can be changed using the template files found in the `\tpl` directory.
 Each file corresponds to a different element in the Discord embedding structure, and each file has access to the following variables:
+
 | Variables | Description |
 | - | - |
 | `{{.ProjectName}}` | Production name. |
