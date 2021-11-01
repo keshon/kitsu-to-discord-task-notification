@@ -67,6 +67,7 @@ Kitsu is a production task tracker for small to midsize animation studios made b
 The software is lightweight and simple with the easiest learning curve of the competition and it provides all nessesary tools to get the job done.
 
 Visit [cg-wire.com](https://cg-wire.com) for more information.
+
 Official [Discord server](https://discord.com/invite/VbCxtKN)
 
 [![CGWire Logo](https://zou.cg-wire.com/cgwire.png)](https://cgwire.com)
