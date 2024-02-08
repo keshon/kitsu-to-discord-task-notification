@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -132,7 +133,7 @@ func SendMessageBunch(conf config.Config, data []kitsu.MessagePayload, webHookUR
 
 	if conf.Log {
 		if len(resp) > 0 {
-			log.Printf("Discord error response: " + resp)
+			slog.Info("Discord error response: " + resp)
 		}
 	}
 }

@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+
+	"github.com/gookit/slog"
 )
 
 // Request wrapper
@@ -18,7 +20,7 @@ func Do(token, method, url string, payload, unmarshal interface{}) string {
 	if payload != nil {
 		buf, err := json.Marshal(payload)
 		if err != nil {
-			panic(err)
+			slog.Fatal(err)
 		}
 		body = bytes.NewBuffer(buf)
 	}
@@ -29,7 +31,7 @@ func Do(token, method, url string, payload, unmarshal interface{}) string {
 	// Create request
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
-		panic(err)
+		slog.Fatal(err)
 	}
 
 	// Set content type
@@ -42,14 +44,14 @@ func Do(token, method, url string, payload, unmarshal interface{}) string {
 	// Fetch request
 	resp, err := client.Do(req)
 	if err != nil {
-		panic(err)
+		slog.Fatal(err)
 	}
 	defer resp.Body.Close()
 
 	// Read response body
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		panic(err)
+		slog.Fatal(err)
 	}
 
 	// Display results
@@ -61,7 +63,7 @@ func Do(token, method, url string, payload, unmarshal interface{}) string {
 		err = json.Unmarshal([]byte(respBody), &unmarshal)
 		//err = json.NewDecoder(resp.Body).Decode(&unmarshal)
 		if err != nil {
-			panic(err)
+			slog.Fatal(err)
 		}
 	}
 

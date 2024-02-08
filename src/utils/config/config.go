@@ -4,6 +4,7 @@ package config
 import (
 	"os"
 
+	"github.com/gookit/slog"
 	"github.com/naoina/toml"
 )
 
@@ -43,12 +44,12 @@ func Read() Config {
 
 	f, err := os.Open(path)
 	if err != nil {
-		panic(err)
+		slog.Fatal(err)
 	}
 	defer f.Close()
 	var config Config
 	if err := toml.NewDecoder(f).Decode(&config); err != nil {
-		panic(err)
+		slog.Fatal(err)
 	}
 
 	return config

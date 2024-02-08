@@ -6,8 +6,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"net/http"
+
+	"github.com/gookit/slog"
 )
 
 // Basic authentication for JWT token
@@ -33,7 +34,7 @@ func AuthForJWTToken(url, email, password string) string {
 	// Create request
 	req, err := http.NewRequest(http.MethodPost, url, requestBody)
 	if err != nil {
-		log.Fatalln(err)
+		slog.Fatal(err)
 	}
 
 	// Set content type
@@ -42,14 +43,14 @@ func AuthForJWTToken(url, email, password string) string {
 	// Fetch Request
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatalln(err)
+		slog.Fatal(err)
 	}
 	defer resp.Body.Close()
 
 	// Read Response Body
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatalln(err)
+		slog.Fatal(err)
 	}
 
 	// Display Results
@@ -62,8 +63,7 @@ func AuthForJWTToken(url, email, password string) string {
 	var jwt Response
 	err = json.Unmarshal(respBody, &jwt)
 	if err != nil {
-		log.Fatalln("Error! Check your Kitsu credentials in conf.toml")
-		//log.Fatalln(err)
+		slog.Fatal("Error! Check your Kitsu credentials in conf.toml")
 	}
 
 	return jwt.Token

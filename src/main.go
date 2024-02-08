@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+
 	"log"
 	"os"
 	"sort"
@@ -17,6 +18,8 @@ import (
 	"time"
 
 	"github.com/beefsack/go-rate"
+	"github.com/gookit/slog"
+	"github.com/gookit/slog/handler"
 
 	"github.com/pieterclaerhout/go-waitgroup"
 	"github.com/robfig/cron/v3"
@@ -29,44 +32,44 @@ func MakeKitsuResponse(conf config.Config) []kitsu.MessagePayload {
 
 	tasks := kitsu.GetTasks()
 	if conf.Log {
-		fmt.Println("Got tasks: " + strconv.Itoa(len(tasks.Each)))
+		slog.Info("Got tasks: " + strconv.Itoa(len(tasks.Each)))
 	}
 
 	taskStatuses := kitsu.GetTaskStatuses()
 	if conf.Log {
-		fmt.Println("Got taskStatuses: " + strconv.Itoa(len(taskStatuses.Each)))
+		slog.Info("Got taskStatuses: " + strconv.Itoa(len(taskStatuses.Each)))
 	}
 
 	entities := kitsu.GetEntities()
 	if conf.Log {
-		fmt.Println("Got entities: " + strconv.Itoa(len(entities.Each)))
+		slog.Info("Got entities: " + strconv.Itoa(len(entities.Each)))
 	}
 
 	enitityTypes := kitsu.GetEntityTypes()
 	if conf.Log {
-		fmt.Println("Got enitityTypes: " + strconv.Itoa(len(enitityTypes.Each)))
+		slog.Info("Got enitityTypes: " + strconv.Itoa(len(enitityTypes.Each)))
 	}
 
 	projects := kitsu.GetProjects()
 	if conf.Log {
-		fmt.Println("Got projects: " + strconv.Itoa(len(projects.Each)))
+		slog.Info("Got projects: " + strconv.Itoa(len(projects.Each)))
 	}
 
 	taskTypes := kitsu.GetTaskTypes()
 	if conf.Log {
-		fmt.Println("Got taskTypes: " + strconv.Itoa(len(taskTypes.Each)))
+		slog.Info("Got taskTypes: " + strconv.Itoa(len(taskTypes.Each)))
 	}
 
 	persons := kitsu.GetPersons()
 	if conf.Log {
-		fmt.Println("Got persons: " + strconv.Itoa(len(persons.Each)))
+		slog.Info("Got persons: " + strconv.Itoa(len(persons.Each)))
 	}
 
 	var comments kitsu.Comments
 	if conf.Kitsu.SkipComments == false {
 		comments = kitsu.GetComments()
 		if conf.Log {
-			fmt.Println("Got comments: " + strconv.Itoa(len(comments.Each)))
+			slog.Info("Got comments: " + strconv.Itoa(len(comments.Each)))
 		}
 	}
 
@@ -86,7 +89,7 @@ func MakeKitsuResponse(conf config.Config) []kitsu.MessagePayload {
 			layout := "2006-01-02T15:04:05"
 			taskDate, err := time.Parse(layout, tasks.Each[i].UpdatedAt)
 			if err != nil {
-				fmt.Println(err)
+				slog.Info(err)
 			}
 			daysCount := int(start.Sub(taskDate).Hours() / 24)
 
@@ -159,11 +162,11 @@ func MakeKitsuResponse(conf config.Config) []kitsu.MessagePayload {
 						layout := "2006-01-02T15:04:05"
 						a, err := time.Parse(layout, taskComments.Each[i].UpdatedAt)
 						if err != nil {
-							fmt.Println(err)
+							slog.Info(err)
 						}
 						b, err := time.Parse(layout, taskComments.Each[j].UpdatedAt)
 						if err != nil {
-							fmt.Println(err)
+							slog.Info(err)
 						}
 						return a.Unix() > b.Unix()
 					})
@@ -284,14 +287,6 @@ func FilterTasks(data []kitsu.MessagePayload, conf config.Config, db *gorm.DB) {
 
 	}
 
-	/*
-		prettyResp, _ := prettyjson.Marshal(tasksByProject)
-		fmt.Println("tasksByProject : ", string(prettyResp))
-		println("------------")
-		prettyResp, _ = prettyjson.Marshal(filtered)
-		fmt.Println("filtered : ", string(prettyResp))
-	*/
-
 	// Send to Discord per production URL (see Advanced settings)
 	if len(tasksByProject) > 0 {
 		for i := 0; i < len(tasksByProject); i++ {
@@ -321,15 +316,6 @@ func DiscordQueueSend(data []kitsu.MessagePayload, conf config.Config, webhookUR
 
 		payload = append(payload, data[i])
 
-		/*
-			if conf.Log {
-				log.Printf(strconv.Itoa(len(payload)))
-				log.Printf(strconv.Itoa(len(filtered)))
-				log.Printf(strconv.Itoa(conf.Discord.EmbedsPerRequests))
-				log.Printf("i " + strconv.Itoa(i))
-			}
-		*/
-
 		if (i+1)%conf.Discord.EmbedsPerRequests == 0 || (i+1)%len(data) == 0 {
 			if conf.Log {
 				log.Printf("Sending bunch of messages: " + strconv.Itoa(len(payload)))
@@ -346,6 +332,16 @@ func DiscordQueueSend(data []kitsu.MessagePayload, conf config.Config, webhookUR
 }
 
 func main() {
+	slog.Configure(func(logger *slog.SugaredLogger) {
+		f := logger.Formatter.(*slog.TextFormatter)
+		f.EnableColor = true
+		f.SetTemplate("[{{datetime}}] [{{level}}] [{{caller}}]\t{{message}} {{data}} {{extra}}\n")
+		f.ColorTheme = slog.ColorTheme
+	})
+
+	h1 := handler.MustFileHandler("./logs/all-levels.log", handler.WithLogLevels(slog.AllLevels))
+	slog.PushHandler(h1)
+
 	start := time.Now()
 
 	// Load config
@@ -361,17 +357,19 @@ func main() {
 		Logger: logger.Default.LogMode(logger.Silent),
 	})
 	if err != nil {
-		panic("failed to connect database")
+		slog.Fatal("failed to connect database")
+		os.Exit(0)
 	}
 	db.AutoMigrate(&model.Task{})
 
 	if conf.Log {
-		log.Printf("Connected to database in %s", time.Since(start))
+		slog.Info("Connected to database in %s", time.Since(start))
 
 		if _, err := os.Stat("./dump"); os.IsNotExist(err) {
 			err := os.Mkdir("./dump", os.ModeDir)
 			if err != nil {
-				panic("failed to create dir")
+				slog.Fatal("failed to create dir")
+				os.Exit(0)
 			}
 		}
 	}
@@ -385,14 +383,14 @@ func main() {
 	token := basicauth.AuthForJWTToken(conf.Kitsu.Hostname+"api/auth/login", conf.Kitsu.Email, conf.Kitsu.Password)
 	os.Setenv("KitsuJWTToken", token)
 	if conf.Log {
-		log.Printf("Connected to Kitsu in %s", time.Since(start))
+		slog.Info("Connected to Kitsu in %s", time.Since(start))
 	}
 
 	c.AddFunc("@every 1h", func() {
 		token := basicauth.AuthForJWTToken(conf.Kitsu.Hostname+"api/auth/login", conf.Kitsu.Email, conf.Kitsu.Password)
 		os.Setenv("KitsuJWTToken", token)
 		if conf.Log {
-			fmt.Println("Got new Kitsu token")
+			slog.Info("Got new Kitsu token")
 		}
 	})
 
@@ -400,13 +398,13 @@ func main() {
 	kitsuResponse := MakeKitsuResponse(conf)
 	if conf.Log {
 		DumpToFile(kitsuResponse, "kitsu_response")
-		log.Printf("Done MakeKitsuResponse in %s", time.Since(start))
+		slog.Info("Done MakeKitsuResponse in %s", time.Since(start))
 	}
 
 	// Prepare messages to Discord
 	FilterTasks(kitsuResponse, conf, db)
 	if conf.Log {
-		log.Printf("Done FilterTasks in %s", time.Since(start))
+		slog.Info("Done FilterTasks in %s", time.Since(start))
 	}
 
 	c.AddFunc("@every "+strconv.Itoa(conf.Kitsu.RequestInterval)+"m", func() {
@@ -414,13 +412,13 @@ func main() {
 		kitsuResponse := MakeKitsuResponse(conf)
 		if conf.Log {
 			DumpToFile(kitsuResponse, "kitsu_response")
-			log.Printf("Done MakeKitsuResponse in %s", time.Since(start))
+			slog.Info("Done MakeKitsuResponse in %s", time.Since(start))
 		}
 
 		// Filter tasks
 		FilterTasks(kitsuResponse, conf, db)
 		if conf.Log {
-			log.Printf("Done FilterTasks in %s", time.Since(start))
+			slog.Info("Done FilterTasks in %s", time.Since(start))
 		}
 	})
 

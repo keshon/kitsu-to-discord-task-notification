@@ -4,7 +4,7 @@ import (
 	"app/src/utils/config"
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"log/slog"
 	"net/http"
 	"runtime"
 	"time"
@@ -20,7 +20,7 @@ func Info(resp *http.Response, respBody []byte) {
 		runtime.Callers(2, pc)
 		f := runtime.FuncForPC(pc[0])
 		file, line := f.FileLine(pc[0])
-		fmt.Printf("%s:%d %s\n", file, line, f.Name())
+		slog.Info("%s:%d %s\n", file, line, f.Name())
 
 		// Headers
 		prettyResp, _ := prettyjson.Marshal(resp)
@@ -53,11 +53,11 @@ func Info(resp *http.Response, respBody []byte) {
 		dt := time.Now()
 
 		// Pretty print
-		fmt.Println("--start--")
-		fmt.Println(dt.String())
-		fmt.Println("Status : ", resp.StatusCode)
-		fmt.Println("Headers : ", string(prettyResp))
-		fmt.Println("Body : ", string(prettyBody))
-		fmt.Println("--end--\n")
+		slog.Info("--start--")
+		slog.Info(dt.String())
+		slog.Info("Status : ", resp.StatusCode)
+		slog.Info("Headers : ", string(prettyResp))
+		slog.Info("Body : ", string(prettyBody))
+		slog.Info("--end--\n")
 	}
 }
